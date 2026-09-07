@@ -6,13 +6,12 @@
 
 GitHub Pages is static and cannot safely write directly to an `.xlsx` file. Use Supabase as the shared source of truth:
 
-1. Create a Supabase project.
-2. Store the schedule state in a table such as `schedule_state` keyed by user.
-3. Deploy an Edge Function at `/api/assistant` (or route that path through your hosting setup).
-4. Keep the OpenAI-compatible API key only in Supabase secrets, never in this HTML file.
-5. Add Supabase authentication before publishing personal schedule data.
-6. Replace the local `save()` and `sync` button handlers with Supabase reads/writes.
-7. Generate the updated workbook from the same Supabase state using a server-side export function. The included `.xlsx` remains a downloadable baseline, not the live database.
+1. Create a Supabase project and the `schedule_state` table with RLS policies.
+2. Enable email authentication and create your user.
+3. The current HTML is configured for this project and now signs in, loads, and upserts `schedule_state` using the browser-safe publishable key.
+4. Deploy an Edge Function at `/api/assistant` (or route that path through your hosting setup).
+5. Keep the OpenAI-compatible API key only in Supabase secrets, never in this HTML file.
+6. Generate the updated workbook from the same Supabase state using a server-side export function. The included `.xlsx` remains a downloadable baseline, not the live database.
 
 The AI assistant should receive the current schedule and task list, ask for urgency 1–10 when a task has neither a time nor deadline, then return a proposed schedule change for confirmation before writing it.
 
