@@ -9,11 +9,24 @@ GitHub Pages is static and cannot safely write directly to an `.xlsx` file. Use 
 1. Create a Supabase project and the `schedule_state` table with RLS policies.
 2. Enable email authentication and create your user.
 3. The current HTML is configured for this project and now signs in, loads, and upserts `schedule_state` using the browser-safe publishable key.
-4. Deploy an Edge Function at `/api/assistant` (or route that path through your hosting setup).
+4. Deploy the `assistant` Edge Function. The website calls `https://uaiqqzuehfcakqamsbmd.supabase.co/functions/v1/assistant` directly and sends the signed-in user's access token.
 5. Keep the OpenAI-compatible API key only in Supabase secrets, never in this HTML file.
 6. Generate the updated workbook from the same Supabase state using a server-side export function. The included `.xlsx` remains a downloadable baseline, not the live database.
 
 The AI assistant should receive the current schedule and task list, ask for urgency 1–10 when a task has neither a time nor deadline, then return a proposed schedule change for confirmation before writing it.
+
+### Deploying the AI function
+
+From PowerShell in `C:\Users\justi\schedule-ai`:
+
+```powershell
+npx supabase login
+npx supabase link --project-ref uaiqqzuehfcakqamsbmd
+npx supabase secrets set OPENAI_API_KEY=YOUR_AI_KEY
+npx supabase functions deploy assistant
+```
+
+The AI key is stored as a Supabase secret. Never put it in GitHub, Excel, or `index.html`.
 
 ## Local preview
 
