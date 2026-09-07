@@ -65,6 +65,15 @@ Do not silently overwrite the schedule. Return a concise explanation and a propo
 
   const result = await response.json();
   const reply = result.choices?.[0]?.message?.content;
+  if (typeof reply !== "string" || !reply.trim()) {
+    return new Response(JSON.stringify({
+      error: "The AI provider returned no usable reply.",
+      providerResponse: result,
+    }), {
+      status: 502,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
   return new Response(JSON.stringify({ reply }), {
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
