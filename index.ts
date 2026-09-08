@@ -1,106 +1,86 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#1f4e78">
-  <title>My Responsibility Schedule</title>
-  <style>
-    :root { --navy:#1f4e78; --blue:#d9eaf7; --green:#e2f0d9; --yellow:#fff2cc; --orange:#fce4d6; --ink:#17202a; }
-    * { box-sizing:border-box; } body { margin:0; font-family:system-ui,-apple-system,Segoe UI,sans-serif; color:var(--ink); background:#f6f8fb; }
-    header { background:var(--navy); color:#fff; padding:1rem; position:sticky; top:0; z-index:2; }
-    header h1 { margin:0 0 .25rem; font-size:1.35rem; } header p { margin:0; opacity:.9; font-size:.9rem; }
-    main { max-width:1100px; margin:auto; padding:1rem; } .toolbar,.card { background:#fff; border-radius:12px; padding:1rem; box-shadow:0 2px 10px #15223812; margin-bottom:1rem; }
-    button, select, input, textarea { font:inherit; } button { border:0; border-radius:8px; padding:.65rem .8rem; cursor:pointer; background:var(--navy); color:#fff; }
-    button.secondary { background:#e8eef5; color:var(--navy); } button.danger { background:#a61b1b; } button:disabled { opacity:.55; cursor:not-allowed; }
-    .day-buttons { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; } .day-buttons button.active { outline:3px solid #f4b183; }
-    .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:1rem; } h2 { color:var(--navy); font-size:1.1rem; margin-top:0; }
-    table { border-collapse:collapse; width:100%; } th,td { border-bottom:1px solid #d9e1f2; text-align:left; padding:.55rem; vertical-align:top; } th { background:#5b9bd5; color:#fff; }
-    .must { background:var(--orange); } .core { background:var(--yellow); } .growth { background:var(--green); } .tag { font-size:.78rem; padding:.2rem .4rem; border-radius:5px; }
-    .form-row { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:.6rem; margin:.6rem 0; } label { display:block; font-size:.82rem; font-weight:650; } input,select,textarea { width:100%; padding:.55rem; border:1px solid #c6d2df; border-radius:7px; margin-top:.2rem; }
-    .muted { color:#667085; font-size:.85rem; } .status { min-height:1.3rem; color:#276749; } .chat { min-height:130px; max-height:260px; overflow:auto; background:#f7fafc; padding:.6rem; border-radius:8px; }
-    .message { margin:.35rem 0; padding:.45rem .6rem; border-radius:8px; white-space:pre-wrap; } .message.user { background:var(--blue); } .message.ai { background:var(--green); }
-    @media(max-width:600px) { th:nth-child(5),td:nth-child(5) { display:none; } main { padding:.65rem; } }
-  </style>
-</head>
-<body>
-<header><h1>My Responsibility Schedule</h1><p>Prayer times are daily anchors. Choose the day type that matches today.</p></header>
-<main>
-  <section class="card">
-    <h2>Account and sync</h2>
-    <p class="muted">Sign in with the Supabase account you created. This lets your devices share one schedule.</p>
-    <form id="authForm"><div class="form-row"><label>Email <input id="authEmail" type="email" required autocomplete="email"></label><label>Password <input id="authPassword" type="password" required autocomplete="current-password"></label></div><button id="authSubmit">Sign in</button> <button id="signOut" type="button" class="secondary">Sign out</button></form>
-    <p id="authStatus" class="status"></p>
-  </section>
-  <section class="toolbar">
-    <strong>Today’s day type</strong>
-    <div class="day-buttons">
-      <button data-type="1">1 · School + mom off</button>
-      <button data-type="2">2 · School + mom works</button>
-      <button data-type="3">3 · No school + mom works</button>
-      <button data-type="4">4 · No school + mom off</button>
-    </div>
-    <div class="form-row">
-      <label>Fajr <input id="fajr" type="time"></label><label>Dhuhr <input id="dhuhr" type="time"></label>
-      <label>Asr <input id="asr" type="time"></label><label>Maghrib <input id="maghrib" type="time"></label><label>Isha <input id="isha" type="time"></label>
-    </div>
-    <p class="muted">Enter the correct times from your local masjid/prayer timetable each day. The app never assumes a fixed prayer time.</p>
-    <button id="save" class="secondary">Save to this device</button>
-    <button id="sync">Sync to Supabase</button>
-    <button id="download">Download schedule JSON</button>
-    <p id="status" class="status"></p>
-  </section>
+import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 
-  <section class="card"><h2 id="scheduleTitle"></h2><table><thead><tr><th>Time</th><th>Block</th><th>Purpose / tasks</th><th>Priority</th><th>Notes</th></tr></thead><tbody id="schedule"></tbody></table></section>
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
 
-  <div class="grid">
-    <section class="card"><h2>Add a task</h2><p class="muted">If you do not provide a time or deadline, urgency 1–10 is required and the planner will place it in the next compatible open block.</p>
-      <form id="taskForm"><div class="form-row"><label>Task <input id="task" required></label><label>Class/category <input id="category" placeholder="AP Calc, family, project"></label></div>
-      <div class="form-row"><label>Time (optional) <input id="taskTime" type="time"></label><label>Due by (optional) <input id="due" type="datetime-local"></label><label>Urgency 1–10 <input id="urgency" type="number" min="1" max="10"></label></div>
-      <button>Add and place task</button></form><div id="taskResult" class="muted"></div>
-    </section>
-    <section class="card"><h2>AI schedule assistant</h2><div id="chat" class="chat"><div class="message ai">Tell me an update such as “I have an AP Calc assignment due tomorrow.” I’ll ask for urgency when time/deadline is missing.</div></div>
-      <form id="chatForm"><div class="form-row"><label>Message <textarea id="chatInput" rows="2" required></textarea></label></div><button>Send to assistant</button></form>
-      <p class="muted">The AI endpoint is intentionally not embedded with a secret key. Configure the Supabase Edge Function before using AI across devices.</p>
-    </section>
-  </div>
+serve(async (request: Request): Promise<Response> => {
+  if (request.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
 
-  <section class="card"><h2>Weekly rotation</h2><table><thead><tr><th>Day</th><th>Main focus</th><th>Suggested work</th><th>Definition of done</th></tr></thead><tbody id="rotation"></tbody></table></section>
-  <section class="card"><h2>Goals and progress</h2><table><thead><tr><th>Goal</th><th>Next action</th><th>Weekly target</th><th>Metric</th><th>Notes</th></tr></thead><tbody id="goals"></tbody></table></section>
-  <section class="card"><h2>Daily checklist</h2><div id="checklist"></div></section>
-</main>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script>
-const SUPABASE_URL="https://uaiqqzuehfcakqamsbmd.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY="sb_publishable_UB7x_3Kwuu6MxpHYnWYqlw_tem0gHxS";
-const supabaseClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
-const schedules = {
-  1:{title:"School + mom off (more project/study flexibility)", rows:[
-    ["Fajr time","Fajr + sunnah","Prayer, short Quran review, water, make bed","Must do","Use local prayer time."],["5:30–6:30","SAT Prep","Timed questions or one focused topic; review mistakes","Core","Alternate math and reading/writing."],["6:30–7:30","Breakfast + prepare","Breakfast, pack, commute, quick room reset","Must do","No phone rabbit holes."],["8:00–3:00","Classes","AP Bio, AP Calc, AP Physics, Creative Writing; record homework immediately","Must do","Use lunch for a 10-minute review only if needed."],["Dhuhr time","Dhuhr + sunnah","Pray and reset","Must do","Use correct daily time."],["3:15–4:00","Family help","Check in with mom, dishes, laundry, or house task","Must do","Most urgent task first."],["4:00–5:30","Academic deep work","Rotate AP homework: Bio/Calc/Physics; Creative Writing on its assigned day","Core","50 minutes work + 10 minutes break."],["Asr time","Asr + sunnah","Prayer and short break","Must do","Use correct daily time."],["5:30–6:30","Dinner + cleanup","Make dinner with family, dishes, wipe counters","Must do","Family time."],["Maghrib time","Maghrib + sunnah","Prayer","Must do","Read Quran after prayer if possible."],["7:00–8:00","Growth focus","Weekly rotation: robotics, project, MIT OCW, coding, leadership, or trading","Growth","One focus only."],["Isha time","Isha + sunnah","Prayer","Must do","Wind down."],["8:45–9:30","Quran / light review","Quran study or spaced repetition; prepare tomorrow","Core","Calm and sustainable."],["9:30–10:00","Shutdown","Bag, clothes, task list, no screens in bed","Must do","Sleep target 10:00 PM."]]},
-  2:{title:"School + mom works (family help 3:00–5:00 PM)", rows:[
-    ["Fajr time","Fajr + sunnah","Prayer and short Quran review","Must do","Use local prayer time."],["5:30–6:15","SAT Prep","Short focused set and error log","Core","Consistency over volume."],["6:15–7:30","Breakfast + prepare","Breakfast, pack, commute, room reset","Must do","Keep morning simple."],["8:00–3:00","Classes","Attend classes and capture homework/deadlines","Must do","Use study hall for urgent work."],["Dhuhr time","Dhuhr + sunnah","Prayer","Must do","Use correct daily time."],["3:00–5:00","Family responsibility","Cooking, dishes, cleaning, errands, laundry, helping mom","Must do","Protected block."],["Asr time","Asr + sunnah","Prayer during family block","Must do","Pause and pray on time."],["5:00–6:00","Dinner + cleanup","Finish dinner, eat, dishes, counters","Must do","Reset kitchen."],["Maghrib time","Maghrib + sunnah","Prayer","Must do","Short Quran reading if able."],["7:00–8:15","Academic deep work","Homework due next; rotate AP Bio, Calc, Physics, Creative Writing","Core","One subject."],["Isha time","Isha + sunnah","Prayer","Must do","Transition toward sleep."],["8:45–9:30","Maintenance focus","Quran study, MIT OCW, coding, or leadership admin","Growth","One light task."],["9:30–10:00","Shutdown","Plan tomorrow and prepare for sleep","Must do","Sleep target 10:00 PM."]]},
-  3:{title:"No school + mom works (work window from Fajr to about 1 PM)", rows:[
-    ["Fajr time","Fajr + Quran","Prayer, sunnah, Quran memorization/study","Must do","Start with worship."],["6:00–7:30","SAT Prep","Full focused section or timed practice; review errors","Core","Best high-focus block."],["7:30–8:00","Breakfast + reset","Eat, clean dishes, make bed","Must do","Quick reset."],["8:00–9:30","AP / MIT study","Alternate AP Calc/Physics/Bio and MIT OCW preview","Core","Active problems, not passive videos."],["9:30–9:45","Break","Walk, snack, no scrolling spiral","Core","Short reset."],["9:45–11:15","Main growth block","Robotics club planning, biomimetic hand, ESP32 car, or C++/Java","Growth","Pick one deliverable."],["Dhuhr time","Dhuhr + sunnah","Prayer","Must do","Use correct daily time."],["12:00–1:00","Family / house prep","Prepare lunch or dinner, dishes, cleaning, check in with mom","Must do","Useful task before 1 PM."],["1:00–2:00","Lunch + rest","Eat and recover","Core","Real break."],["2:00–3:30","Project / leadership","Robotics task, CSHS/SGA/rocketry action, or money work","Growth","Concrete output."],["Asr time","Asr + sunnah","Prayer","Must do","Pause even mid-task."],["4:00–5:30","Family / dinner","Make dinner, dishes, cleaning","Must do","Family priority."],["Maghrib time","Maghrib + sunnah","Prayer + Quran reading","Must do","Keep Quran consistent."],["7:00–8:00","Sunday school / teaching","Teach Quran Sunday school or prepare lesson; otherwise light review","Core","Saturday: lesson prep."],["Isha time","Isha + sunnah","Prayer","Must do","Wind down."],["8:45–9:30","Light review + plan","Trading journal, reading, or next-day planning","Growth","No high-stakes new work."],["10:00","Sleep","Sleep and recover","Must do","Protect next day."]]},
-  4:{title:"No school + mom off (rare flexible day)", rows:[
-    ["Fajr time","Fajr + Quran","Prayer, sunnah, Quran study/memorization","Must do","Use local time."],["6:00–7:30","SAT Prep","Timed section or practice test; review errors","Core","Longer block."],["7:30–8:30","Breakfast + house reset","Breakfast, dishes, laundry/cleaning with family","Must do","Shared work."],["8:30–10:00","AP / MIT study","AP Calc/Physics/Bio rotation; MIT OCW preview","Core","One academic target."],["10:00–10:30","Break","Walk, snack, family check-in","Core","Rest intentionally."],["10:30–12:00","Deep project block","Biomimetic hand, ESP32 car, robotics build, or C++/Java","Growth","Visible deliverable."],["Dhuhr time","Dhuhr + sunnah","Prayer","Must do","Pause and reset."],["12:30–1:30","Lunch + kitchen","Make/eat lunch and reset dishes","Must do","Share the work."],["1:30–3:00","Leadership / earning","CSHS, SGA, rocketry, robotics outreach, or safe paid work","Growth","One outcome."],["Asr time","Asr + sunnah","Prayer","Must do","Keep the anchor."],["4:00–5:30","Family dinner prep","Cook, clean, organize house","Must do","Family contribution."],["Maghrib time","Maghrib + sunnah","Prayer + Quran","Must do","Read/reflect."],["7:00–8:00","Teaching / community","Sunday school teaching or prep; otherwise robotics/leadership admin","Core","Sunday priority."],["Isha time","Isha + sunnah","Prayer","Must do","Begin shutdown."],["8:45–9:30","Weekly review","Update goals, trading journal, next week, thoughtful professor email","Core","MIT outreach occasional."],["10:00","Sleep","Sleep","Must do","Recovery is part of plan."]]}}
-const rotation=[["Monday","Robotics club","Recruiting, interest list, board updates, curriculum, meeting plan","One admin/build deliverable."],["Tuesday","AP + SAT maintenance","Homework due soon, SAT error log, no major project","Protect family block."],["Wednesday","Projects","Biomimetic hand or ESP32 robot phone car","Build/test/document one feature."],["Thursday","MIT OCW + physics","MIT courseware, AP Physics C problems, note one question","Thoughtful professor email only."],["Friday","Leadership + money","CSHS, SGA, rocketry planning, paid work","One useful action."],["Saturday","Long build / SAT","Long SAT block plus project or robotics build","Use Type 3 or 4."],["Sunday","Quran teaching + reset","Teach/prepare Sunday school, Quran, weekly planning","Keep evening lighter."]];
-const goals=[["SAT (December)","Complete next timed section and review errors","3 focused sessions + 1 longer practice block","Practice sections / score","Increase full tests as December gets closer."],["AP Bio","Finish current unit questions","2 focused blocks","Assignments / quiz mastery",""],["AP Calc","Solve mixed practice set","2 focused blocks","Problems correct",""],["AP Physics","Complete problem set","2 focused blocks","Problems / concepts",""],["Creative Writing","Draft or revise one piece","1 focused block","Words / revisions",""],["Quran study","Review assigned passage","Daily 20–30 minutes","Days completed",""],["Quran teaching","Prepare next lesson","1 prep block + teaching","Lesson ready",""],["ISF robotics club","Complete the next launch task","1–2 focused blocks","Milestones / interested students","Aim to finish in 1–2 months; keep an interest list and board update."],["Biomimetic hand","Build/test one subsystem","1 build block","Features tested",""],["ESP32 robot car","Build/test one subsystem","1 build block","Features tested",""],["C++ / Java","Complete one lesson/problem set","2 sessions","Lessons / problems",""],["MIT OCW / Physics C","Complete one lecture plus problems","1 session","Lessons / problems",""],["Trading simulator","Log trades and review decisions","1 journal session","Trades + notes","Use simulated money only; focus on risk and learning."],["CSHS / SGA / rocketry","Take one concrete service action","1 action each week","Actions completed","Choose high-impact actions instead of accepting every role."],["$1,000 project fund","Complete one safe earning action","1–2 hours weekly","Dollars earned","Family-approved, legal, age-appropriate work."]];
-let state=JSON.parse(localStorage.getItem("scheduleState")||'{"type":"1","prayers":{},"tasks":[]}');
-let chatHistory=[];
-const $=id=>document.getElementById(id);
-function render(){const s=schedules[state.type]; $("scheduleTitle").textContent=`Day Type ${state.type}: ${s.title}`; $("schedule").innerHTML=s.rows.map(r=>`<tr class="${r[3].toLowerCase().replace(" ","")}">${r.map((v,i)=>`<td>${i===3?`<span class="tag">${v}</span>`:v}</td>`).join("")}</tr>`).join(""); $("rotation").innerHTML=rotation.map(r=>`<tr>${r.map(v=>`<td>${v}</td>`).join("")}</tr>`).join(""); $("goals").innerHTML=goals.map(r=>`<tr>${r.map(v=>`<td>${v}</td>`).join("")}</tr>`).join(""); $("checklist").innerHTML=["Pray Fajr, Dhuhr, Asr, Maghrib, Isha + sunnah","School/classes and capture assignments","Family chore / dishes / dinner help","SAT or academic deep-work block","Quran study","One growth focus only","Update tomorrow plan","Sleep on time"].map(x=>`<label style="display:block;margin:.5rem"><input type="checkbox"> ${x}</label>`).join(""); ["fajr","dhuhr","asr","maghrib","isha"].forEach(p=>$(p).value=state.prayers[p]||""); document.querySelectorAll("[data-type]").forEach(b=>b.classList.toggle("active",b.dataset.type===state.type));}
-async function save(){state.prayers=Object.fromEntries(["fajr","dhuhr","asr","maghrib","isha"].map(p=>[p,$(p).value])); localStorage.setItem("scheduleState",JSON.stringify(state)); const {data:{user}}=await supabaseClient.auth.getUser(); if(user){const {error}=await supabaseClient.from("schedule_state").upsert({user_id:user.id,state,updated_at:new Date().toISOString()}); if(error){$("status").textContent=`Local save worked, but sync failed: ${error.message}`;return;} $("status").textContent="Saved locally and synced."; } else $("status").textContent="Saved locally. Sign in to sync across devices."; render();}
-document.querySelectorAll("[data-type]").forEach(b=>b.onclick=()=>{state.type=b.dataset.type;save();});
-$("save").onclick=save;
-$("sync").onclick=async()=>{const {data:{user}}=await supabaseClient.auth.getUser();if(!user){$("status").textContent="Sign in before syncing.";return;}const {data,error}=await supabaseClient.from("schedule_state").select("state,updated_at").eq("user_id",user.id).maybeSingle();if(error){$("status").textContent=`Sync failed: ${error.message}`;return;}if(data?.state){state=data.state;localStorage.setItem("scheduleState",JSON.stringify(state));render();$("status").textContent=`Loaded shared schedule${data.updated_at?" from "+new Date(data.updated_at).toLocaleString():""}.`;}else await save();};
-$("authForm").onsubmit=async e=>{e.preventDefault();$("authStatus").textContent="Signing in...";const {error}=await supabaseClient.auth.signInWithPassword({email:$("authEmail").value,password:$("authPassword").value});if(error){$("authStatus").textContent=`Sign-in failed: ${error.message}`;return;}$("authStatus").textContent="Signed in.";await loadSharedState();};
-$("signOut").onclick=async()=>{const {error}=await supabaseClient.auth.signOut();$("authStatus").textContent=error?`Sign-out failed: ${error.message}`:"Signed out. Local data remains on this device.";};
-async function loadSharedState(){const {data:{user}}=await supabaseClient.auth.getUser();if(!user)return;$("authStatus").textContent=`Signed in as ${user.email}`;const {data,error}=await supabaseClient.from("schedule_state").select("state,updated_at").eq("user_id",user.id).maybeSingle();if(error){$("status").textContent=`Could not load shared schedule: ${error.message}`;return;}if(data?.state){state=data.state;localStorage.setItem("scheduleState",JSON.stringify(state));render();$("status").textContent=`Shared schedule loaded${data.updated_at?" from "+new Date(data.updated_at).toLocaleString():""}.`;}else await save();}
-supabaseClient.auth.getSession().then(({data})=>{if(data.session)loadSharedState();});
-$("download").onclick=()=>{const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([JSON.stringify(state,null,2)],{type:"application/json"}));a.download="schedule-state.json";a.click();};
-$("taskForm").onsubmit=e=>{e.preventDefault();const task=$("task").value.trim(),time=$("taskTime").value,due=$("due").value,urgency=Number($("urgency").value);if(!time&&!due&&!urgency){$("taskResult").textContent="Please provide a time, due date, or urgency from 1–10.";return;}state.tasks.push({task,category:$("category").value,time,due,urgency});save();$("taskResult").textContent=`Added “${task}”. ${time||due?"It will use your specified timing.":"Urgency "+urgency+" will be used to place it in an open block."}`;e.target.reset();};
-function formatAssistantError(value){if(value instanceof Error)return value.message;if(typeof value==="string")return value;try{return JSON.stringify(value);}catch{return "Assistant request failed.";}}
-$("chatForm").onsubmit=async e=>{e.preventDefault();const text=$("chatInput").value.trim();if(!text)return;const chat=$("chat");chat.innerHTML+=`<div class="message user">${text}</div>`;$("chatInput").value="";chatHistory.push({role:"user",content:text});try{const {data:{session}}=await supabaseClient.auth.getSession();if(!session)throw new Error("Sign in before using the AI assistant.");const r=await fetch(`${SUPABASE_URL}/functions/v1/assistant`,{method:"POST",headers:{"Content-Type":"application/json",apikey:SUPABASE_PUBLISHABLE_KEY,Authorization:`Bearer ${session.access_token}`},body:JSON.stringify({message:text,history:chatHistory,state})});const raw=await r.text();let data;try{data=raw?JSON.parse(raw):{};}catch{data={error:raw||"Assistant returned invalid JSON."};}if(!r.ok)throw new Error(formatAssistantError(data.error||data));const reply=data.reply||"No reply returned.";chatHistory.push({role:"assistant",content:reply});chat.innerHTML+=`<div class="message ai">${reply}</div>`;}catch(err){chatHistory.pop();chat.innerHTML+=`<div class="message ai">Assistant error: ${formatAssistantError(err)}</div>`;}chat.scrollTop=chat.scrollHeight;};
-render();
-</script>
-</body></html>
+  if (request.method !== "POST") {
+    return new Response("Method not allowed", { status: 405, headers: corsHeaders });
+  }
+
+  const { message, state, history } = await request.json();
+  if (typeof message !== "string" || !message.trim()) {
+    return new Response(JSON.stringify({ error: "A message is required." }), {
+      status: 400,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  const apiKey = Deno.env.get("OPENAI_API_KEY");
+  const apiUrl = Deno.env.get("OPENAI_COMPATIBLE_URL") ??
+    "https://api.openai.com/v1/chat/completions";
+  const model = Deno.env.get("OPENAI_MODEL") ?? "gpt-4o-mini";
+
+  if (!apiKey) {
+    return new Response(JSON.stringify({ error: "OPENAI_API_KEY is not configured." }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  const system = `You are a schedule assistant. Current schedule state is JSON: ${
+    JSON.stringify(state)
+  }.
+When a task has no time and no deadline, ask the user for urgency from 1 to 10 before proposing placement.
+Respect the five daily prayers and sunnah, school, family responsibilities, Quran, sleep, and existing commitments.
+Do not silently overwrite the schedule. Return a concise explanation and a proposed change for confirmation.`;
+
+  const conversation = Array.isArray(history)
+    ? history.filter((item) =>
+      item && (item.role === "user" || item.role === "assistant") &&
+      typeof item.content === "string"
+    ).slice(-20)
+    : [{ role: "user", content: message }];
+  const response = await fetch(apiUrl, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer " + apiKey,
+    },
+    body: JSON.stringify({
+      model,
+      messages: [
+        { role: "system", content: system },
+        ...conversation,
+      ],
+    }),
+  });
+
+  if (!response.ok) {
+    return new Response(await response.text(), {
+      status: response.status,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  const result = await response.json();
+  const reply = result.choices?.[0]?.message?.content;
+  if (typeof reply !== "string" || !reply.trim()) {
+    return new Response(JSON.stringify({
+      error: "The AI provider returned no usable reply.",
+      providerResponse: result,
+    }), {
+      status: 502,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+  return new Response(JSON.stringify({ reply }), {
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+});
