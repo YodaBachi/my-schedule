@@ -15,6 +15,13 @@ GitHub Pages is static and cannot safely write directly to an `.xlsx` file. Use 
 
 The AI assistant should receive the current schedule and task list, ask for urgency 1–10 when a task has neither a time nor deadline, then return a proposed schedule change for confirmation before writing it.
 
+### Iqama-time refresh
+
+The app now reads the daily Iqama/congregation times from the Islamic Society of Frederick page you provided:
+`https://mosqueprayertimes.com/islamicsocietyoffrederick`
+
+It refreshes when the page opens and every six hours while it remains open. It does not run in the background when the browser/watch is closed. The schedule uses Iqama times for congregation planning; verify them against the masjid before relying on them. Manual time fields remain available if the source is unavailable.
+
 ### Deploying the AI function
 
 From PowerShell in `C:\Users\justi\schedule-ai`:
