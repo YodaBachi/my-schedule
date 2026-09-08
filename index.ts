@@ -38,7 +38,7 @@ serve(async (request: Request): Promise<Response> => {
     JSON.stringify(state)
   }.
 When a task has no time and no deadline, ask the user for urgency from 1 to 10 before proposing placement.
-Respect the five daily prayers and sunnah, school, family responsibilities, Quran, sleep, and existing commitments.
+Treat the five daily Iqama times in the schedule as fixed salah blocks, and respect sunnah, school, family responsibilities, Quran, sleep, and existing commitments.
 Do not silently overwrite the schedule. Return a concise explanation and a proposed change for confirmation.`;
 
   const conversation = Array.isArray(history)
